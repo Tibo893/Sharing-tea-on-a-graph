@@ -144,42 +144,6 @@ def heuristique_arbres(liste,poids):
         poids=heuristique_arbres(liste, poids)
     return poids
 
-
-def heuristique_arbres2(liste,poids):
-    v=poids[0]
-    chemins=chemins_depuis_racine(liste)
-    moyenne=[]
-    liste_sommet=[i for i in range(len(liste))]
-    liste_sommet_2=[i for i in range(len(liste))]
-    for i in liste_sommet :
-        if i != 0 :
-            chem=chemins[i]
-            chem.remove(0)
-            print(chem)
-            poids=OperationGraphe.equilibrage(liste,poids,chem)
-    for i in range (len(chemins)) :
-        moyenne.append(OperationGraphe.equilibrage(liste,poids,chemins[i])[0])
-    for i in liste_sommet_2 :
-        for j in chemins[i]:
-            if moyenne[j]<moyenne[i] :
-                if j in liste_sommet :
-                    liste_sommet.remove(j)
-            elif i!=j :
-                if i in liste_sommet :
-                    liste_sommet.remove(i)
-    liste_sommet_trié=tri_fusion(liste_sommet,moyenne)
-    # print(liste_sommet_trié)
-    # for k in liste_sommet_trié :
-    #     poids = OperationGraphe.equilibrage(liste,poids,chemins[k])
-        #print(poids[0])
-    poids = OperationGraphe.equilibrage(liste,poids,chemins[liste_sommet_trié[0]])
-    if poids[0] != v :
-        poids=heuristique_arbres(liste, poids)
-    return poids
-
-
-    
-
 def tri_fusion(liste, poids):
 
     # Cas de base
