@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Graphe — Équilibrage</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap');
+
+  :root {
+    --bg: #0f0f11;
+    --bg2: #18181c;
+    --bg3: #222228;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.16);
+    --text: #e8e6e0;
+    --muted: #7a7880;
+    --accent: #c8f080;
+    --accent2: #80d4f0;
+    --orange: #f0a060;
+    --red: #f07070;
+    --node-default: #1e2e4a;
+    --node-default-border: #2d4870;
+    --node-zero: #3a1e10;
+    --node-zero-border: #c85020;
+    --node-selected: #1a3a20;
+    --node-selected-border: #c8f080;
+    --node-done: #252535;
+    --node-done-border: #5050a0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 20px 28px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+  header span { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── Canvas ────────────────────────────────────── */
+  .canvas-wrap {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .canvas-wrap svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .node-group { cursor: grab; }
+  .node-group:active { cursor: grabbing; }
+  .node-circle {
+    transition: r 0.15s ease, fill 0.2s ease, stroke 0.2s ease;
+  }
+  .node-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
+    dominant-baseline: central;
+    text-anchor: middle;
+  }
+  .node-poids {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    pointer-events: none;
+    dominant-baseline: central;
+    text-anchor: middle;
+  }
+
+  /* ── Sidebar ───────────────────────────────────── */
+  .sidebar {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel {
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+  }
+  .panel-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* sélection info */
+  .sel-info {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    min-height: 16px;
+  }
+  .sel-info span { color: var(--accent); }
+
+  /* boutons */
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px 0;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    margin-bottom: 6px;
+  }
+  .btn:hover { background: var(--bg2); border-color: rgba(255,255,255,0.25); }
+  .btn.primary {
+    background: var(--accent);
+    color: #0a1a00;
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: #b8e068; }
+  .btn.primary:disabled { background: var(--bg3); color: var(--muted); border-color: var(--border); cursor: not-allowed; }
+  .btn.danger { border-color: var(--red); color: var(--red); }
+  .btn.danger:hover { background: rgba(240,112,112,0.1); }
+  .btn.small { font-size: 11px; padding: 6px 0; margin-bottom: 0; }
+
+  .row-btns { display: flex; gap: 6px; }
+  .row-btns .btn { flex: 1; }
+
+  /* Génération */
+  .gen-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .gen-row label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  select, input[type=number] {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 4px 8px;
+    outline: none;
+  }
+  input[type=number] { width: 52px; }
+  select:focus, input[type=number]:focus { border-color: var(--accent); }
+
+  /* poids display */
+  .weights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 5px;
+  }
+  .weight-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 4px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .weight-chip.selected { border-color: var(--accent); background: rgba(200,240,128,0.1); }
+  .weight-chip.changed { border-color: var(--accent2); background: rgba(128,212,240,0.08); }
+  .weight-chip .wc-id { color: var(--muted); font-size: 9px; display: block; }
+  .weight-chip .wc-val { color: var(--text); font-size: 11px; display: block; margin-top: 1px; }
+
+  /* Historique */
+  .history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg3) transparent;
+  }
+  .hist-item {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .hist-item:hover { border-color: var(--border2); background: var(--bg2); }
+  .hist-item.active { border-color: var(--accent); }
+  .hist-item .hist-title { font-size: 11px; font-weight: 500; color: var(--text); margin-bottom: 3px; font-family: 'Syne', sans-serif; }
+  .hist-item .hist-sub { color: var(--muted); line-height: 1.5; }
+  .hist-item .hist-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--accent); font-size: 14px; display: none; }
+  .hist-item.active .hist-arrow { display: block; }
+  .hist-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 20px 0; font-family: 'DM Mono', monospace; }
+
+  /* toast */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent);
+    color: #0a1a00;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 8px 18px;
+    border-radius: 20px;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Graphe · Équilibrage</h1>
+  <span>sélectionner → opérer → annuler</span>
+</header>
+
+<div class="layout">
+  <!-- Canvas SVG -->
+  <div class="canvas-wrap">
+    <svg id="svg">
+      <defs>
+        <marker id="dot" viewBox="0 0 4 4" refX="2" refY="2" markerWidth="4" markerHeight="4">
+          <circle cx="2" cy="2" r="1.5" fill="#4a4a6a"/>
+        </marker>
+      </defs>
+      <g id="edges-layer"></g>
+      <g id="nodes-layer"></g>
+    </svg>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Génération -->
+    <div class="panel">
+      <div class="panel-title">Générer</div>
+      <div class="gen-row">
+        <label>N sommets</label>
+        <input type="number" id="inp-n" value="8" min="2" max="20">
+        <label style="margin-left:4px">Poids</label>
+        <select id="inp-poids">
+          <option value="binaire">binaire</option>
+          <option value="aleatoire">aléatoire</option>
+          <option value="unique">unique</option>
+        </select>
+      </div>
+      <div class="row-btns">
+        <button class="btn small" onclick="generer('graphe')">Graphe</button>
+        <button class="btn small" onclick="generer('arbre')">Arbre</button>
+      </div>
+    </div>
+
+    <!-- Sélection & opération -->
+    <div class="panel">
+      <div class="panel-title">Opération · Équilibrage</div>
+      <div class="sel-info" id="sel-info">Aucun sommet sélectionné</div>
+      <button class="btn primary" id="btn-op" onclick="lancerEquilibrage()" disabled>
+        ⊕ Équilibrer la sélection
+      </button>
+      <div class="row-btns" style="margin-top:4px">
+        <button class="btn small" onclick="toutSelectionner()">Tout sélectionner</button>
+        <button class="btn small danger" onclick="deselectionner()">Effacer sélection</button>
+      </div>
+    </div>
+
+    <!-- Poids actuels -->
+    <div class="panel">
+      <div class="panel-title">Poids actuels</div>
+      <div class="weights-grid" id="weights-display"></div>
+    </div>
+
+    <!-- Historique -->
+    <div class="panel-title" style="padding:12px 16px 0; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">
+      Historique
+      <span id="hist-count" style="color:var(--accent); margin-left:6px; font-size:10px;"></span>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="hist-empty">Aucune opération</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── État global ──────────────────────────────────────────────────────────────
+let N = 0;
+let liste = [];   // liste d'adjacence
+let poids = [];   // poids courants (état actuel = snapshot[histIdx])
+
+// Historique : tableau de snapshots { poids[], sommets[], moyenne, label }
+let historique = [];
+let histIdx = -1; // index du snapshot courant (-1 = état initial)
+
+let snapshots = []; // snapshots[0] = état initial, snapshots[i+1] = après opération i
+
+let positions = []; // {x, y} par sommet
+let selection = new Set();
+let dragging = null;
+let dragStart = { mx: 0, my: 0, nx: 0, ny: 0 };
+
+// ─── Utilitaires graphe (équiv. Python) ──────────────────────────────────────
+function grapheAleatoire(n) {
+  const g = Array.from({length: n}, () => []);
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < i; j++)
+      if (Math.random() < 0.5) { g[i].push(j); g[j].push(i); }
+  return g;
+}
+function arbreAleatoire(n) {
+  const g = Array.from({length: n}, () => []);
+  for (let i = 1; i < n; i++) {
+    const p = Math.floor(Math.random() * i);
+    g[i].push(p); g[p].push(i);
+  }
+  return g;
+}
+function theBinaire(n) { return Array.from({length:n}, () => Math.random()<0.5?1:0); }
+function theAleatoire(n) { return Array.from({length:n}, () => Math.round(Math.random()*100)/100); }
+function theUnique(n) { const p=Array(n).fill(0); p[Math.floor(Math.random()*n)]=1; return p; }
+
+function estConnexe(graphe, sommets) {
+  if (!sommets.length) return true;
+  const set = new Set(sommets);
+  const visites = new Set();
+  const dfs = s => { if (visites.has(s)) return; visites.add(s); for (const v of graphe[s]) if (set.has(v)) dfs(v); };
+  dfs(sommets[0]);
+  return visites.size === set.size;
+}
+
+function equilibrage(graphe, poids, sommets) {
+  const result = [...poids];
+  if (estConnexe(graphe, sommets)) {
+    const somme = sommets.reduce((acc, i) => acc + poids[i], 0) / sommets.length;
+    sommets.forEach(i => result[i] = Math.round(somme * 10000) / 10000);
+  }
+  return result;
+}
+
+// ─── Placement ────────────────────────────────────────────────────────────────
+function getCanvasSize() {
+  const w = document.querySelector('.canvas-wrap');
+  return { W: w.clientWidth, H: w.clientHeight };
+}
+function circlePos(n) {
+  const { W, H } = getCanvasSize();
+  const cx = W/2, cy = H/2, r = Math.min(W,H)*0.38;
+  return Array.from({length:n}, (_,i) => ({
+    x: cx + r*Math.cos(2*Math.PI*i/n - Math.PI/2),
+    y: cy + r*Math.sin(2*Math.PI*i/n - Math.PI/2)
+  }));
+}
+
+// ─── Générer un graphe ────────────────────────────────────────────────────────
+function generer(type) {
+  N = Math.max(2, Math.min(20, parseInt(document.getElementById('inp-n').value) || 8));
+  const poidsTy = document.getElementById('inp-poids').value;
+  liste = type === 'arbre' ? arbreAleatoire(N) : grapheAleatoire(N);
+  const p0 = poidsTy === 'aleatoire' ? theAleatoire(N) : poidsTy === 'unique' ? theUnique(N) : theBinaire(N);
+  positions = circlePos(N);
+  selection = new Set();
+  historique = [];
+  histIdx = -1;
+  snapshots = [{ poids: [...p0] }];
+  poids = [...p0];
+  render();
+  renderPoids(new Set());
+  renderHistorique();
+  updateSelInfo();
+}
+
+// ─── Lancer équilibrage ───────────────────────────────────────────────────────
+function lancerEquilibrage() {
+  const sommets = [...selection].sort((a,b)=>a-b);
+  if (!sommets.length) return;
+
+  if (!estConnexe(liste, sommets)) {
+    showToast('⚠ Sous-graphe non connexe — opération annulée');
+    return;
+  }
+
+  const nouveauxPoids = equilibrage(liste, poids, sommets);
+  const moy = sommets.reduce((a,i)=>a+poids[i],0)/sommets.length;
+
+  // Supprimer toute branche future si on n'est pas au bout
+  if (histIdx < historique.length - 1) {
+    historique = historique.slice(0, histIdx + 1);
+    snapshots = snapshots.slice(0, histIdx + 2);
+  }
+
+  historique.push({ sommets: [...sommets], moyenne: Math.round(moy*10000)/10000 });
+  snapshots.push({ poids: [...nouveauxPoids] });
+  histIdx = historique.length - 1;
+
+  const changed = new Set(sommets);
+  poids = [...nouveauxPoids];
+  selection = new Set();
+
+  render();
+  renderPoids(changed);
+  renderHistorique();
+  updateSelInfo();
+  showToast(`Équilibré : ${sommets.length} sommets → ${Math.round(moy*10000)/10000}`);
+}
+
+// ─── Undo/Redo par clic historique ───────────────────────────────────────────
+function allerAEtat(idx) {
+  // idx = index dans historique (-1 = initial)
+  histIdx = idx;
+  poids = [...snapshots[idx + 1].poids];
+  selection = new Set();
+  render();
+  renderPoids(new Set());
+  renderHistorique();
+  updateSelInfo();
+}
+
+function allerEtatInitial() {
+  histIdx = -1;
+  poids = [...snapshots[0].poids];
+  selection = new Set();
+  render();
+  renderPoids(new Set());
+  renderHistorique();
+  updateSelInfo();
+}
+
+// ─── Sélection ───────────────────────────────────────────────────────────────
+function toutSelectionner() {
+  selection = new Set(Array.from({length:N},(_,i)=>i));
+  render();
+  renderPoids(new Set());
+  updateSelInfo();
+}
+function deselectionner() {
+  selection = new Set();
+  render();
+  renderPoids(new Set());
+  updateSelInfo();
+}
+function toggleSelect(i) {
+  if (selection.has(i)) selection.delete(i); else selection.add(i);
+  render();
+  renderPoids(new Set());
+  updateSelInfo();
+}
+function updateSelInfo() {
+  const el = document.getElementById('sel-info');
+  const btn = document.getElementById('btn-op');
+  if (!selection.size) {
+    el.innerHTML = 'Aucun sommet sélectionné';
+    btn.disabled = true;
+  } else {
+    const arr = [...selection].sort((a,b)=>a-b);
+    const connexe = estConnexe(liste, arr);
+    const moy = arr.reduce((a,i)=>a+poids[i],0)/arr.length;
+    el.innerHTML = `Sélection : <span>${arr.join(', ')}</span><br>` +
+      `Somme : <span>${arr.reduce((a,i)=>a+poids[i],0).toFixed(4)}</span> · ` +
+      `Moy : <span>${moy.toFixed(4)}</span><br>` +
+      (connexe ? '<span style="color:#c8f080">✓ connexe</span>' : '<span style="color:#f07070">✗ non connexe</span>');
+    btn.disabled = !connexe;
+  }
+}
+
+// ─── Rendu SVG ───────────────────────────────────────────────────────────────
+function render() {
+  if (!N) return;
+  const { W, H } = getCanvasSize();
+  const svg = document.getElementById('svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  // Arêtes
+  const edgeLayer = document.getElementById('edges-layer');
+  const seen = new Set();
+  let edgeHtml = '';
+  for (let i = 0; i < N; i++) {
+    for (const j of liste[i]) {
+      const k = Math.min(i,j)+','+Math.max(i,j);
+      if (seen.has(k)) continue; seen.add(k);
+      const selEdge = selection.has(i) && selection.has(j);
+      edgeHtml += `<line x1="${positions[i].x.toFixed(1)}" y1="${positions[i].y.toFixed(1)}"
+        x2="${positions[j].x.toFixed(1)}" y2="${positions[j].y.toFixed(1)}"
+        stroke="${selEdge ? '#c8f08050' : '#2d2d40'}" stroke-width="${selEdge?1.5:1}" stroke-linecap="round"/>`;
+    }
+  }
+  edgeLayer.innerHTML = edgeHtml;
+
+  // Nœuds
+  const nodeLayer = document.getElementById('nodes-layer');
+  let nodeHtml = '';
+  for (let i = 0; i < N; i++) {
+    const p = positions[i];
+    const sel = selection.has(i);
+    const isZero = i === 0;
+    let fill, stroke, textC;
+    if (sel) { fill='#1a3a20'; stroke='#c8f080'; textC='#c8f080'; }
+    else if (isZero) { fill='#3a1e10'; stroke='#c85020'; textC='#f09060'; }
+    else { fill='#1a1a28'; stroke='#2d3050'; textC='#9090c0'; }
+    const r = sel ? 26 : 22;
+    const pVal = typeof poids[i]==='number' && !Number.isInteger(poids[i]) ? poids[i].toFixed(2) : poids[i];
+    nodeHtml += `<g class="node-group" data-i="${i}">
+      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}"
+        fill="${fill}" stroke="${stroke}" stroke-width="${sel?2:1.5}" class="node-circle"/>
+      ${isZero ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r+5}" fill="none" stroke="#c8502028" stroke-width="1.5"/>` : ''}
+      <text x="${p.x.toFixed(1)}" y="${(p.y-5).toFixed(1)}" class="node-label" fill="${textC}" font-size="13">${i}</text>
+      <text x="${p.x.toFixed(1)}" y="${(p.y+8).toFixed(1)}" class="node-poids" fill="${sel?'#a0d060':isZero?'#d08040':'#606080'}" font-size="9">${pVal}</text>
+    </g>`;
+  }
+  nodeLayer.innerHTML = nodeHtml;
+
+  // Attacher events drag/click
+  document.querySelectorAll('.node-group').forEach(g => {
+    const i = parseInt(g.dataset.i);
+    g.addEventListener('mousedown', e => startDrag(e, i));
+    g.addEventListener('touchstart', e => startDragTouch(e, i), {passive:true});
+  });
+}
+
+// ─── Drag ─────────────────────────────────────────────────────────────────────
+function startDrag(e, i) {
+  e.preventDefault();
+  dragging = { i, moved: false };
+  const cvs = document.querySelector('.canvas-wrap');
+  const r = cvs.getBoundingClientRect();
+  dragStart = { mx: e.clientX, my: e.clientY, nx: positions[i].x, ny: positions[i].y, rect: r };
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', endDrag);
+}
+function startDragTouch(e, i) {
+  const t = e.touches[0];
+  dragging = { i, moved: false };
+  const cvs = document.querySelector('.canvas-wrap');
+  const r = cvs.getBoundingClientRect();
+  dragStart = { mx: t.clientX, my: t.clientY, nx: positions[i].x, ny: positions[i].y, rect: r };
+  document.addEventListener('touchmove', onDragTouch, {passive:false});
+  document.addEventListener('touchend', endDrag);
+}
+function onDrag(e) {
+  if (!dragging) return;
+  const dx = e.clientX - dragStart.mx, dy = e.clientY - dragStart.my;
+  if (Math.abs(dx)+Math.abs(dy) > 4) dragging.moved = true;
+  const {W,H} = getCanvasSize();
+  positions[dragging.i].x = Math.max(30, Math.min(W-30, dragStart.nx + dx));
+  positions[dragging.i].y = Math.max(30, Math.min(H-30, dragStart.ny + dy));
+  render();
+}
+function onDragTouch(e) {
+  e.preventDefault();
+  const t = e.touches[0];
+  const dx = t.clientX - dragStart.mx, dy = t.clientY - dragStart.my;
+  if (Math.abs(dx)+Math.abs(dy) > 4) dragging.moved = true;
+  const {W,H} = getCanvasSize();
+  positions[dragging.i].x = Math.max(30, Math.min(W-30, dragStart.nx + dx));
+  positions[dragging.i].y = Math.max(30, Math.min(H-30, dragStart.ny + dy));
+  render();
+}
+function endDrag(e) {
+  if (dragging && !dragging.moved) toggleSelect(dragging.i);
+  dragging = null;
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', endDrag);
+  document.removeEventListener('touchmove', onDragTouch);
+  document.removeEventListener('touchend', endDrag);
+}
+
+// ─── Affichage poids ─────────────────────────────────────────────────────────
+function renderPoids(changed) {
+  if (!N) return;
+  const el = document.getElementById('weights-display');
+  el.innerHTML = Array.from({length:N}, (_,i) => {
+    const p = poids[i];
+    const val = typeof p==='number' && !Number.isInteger(p) ? p.toFixed(4) : p;
+    const sel = selection.has(i) ? ' selected' : '';
+    const ch = changed.has(i) ? ' changed' : '';
+    return `<div class="weight-chip${sel}${ch}"><span class="wc-id">s${i}</span><span class="wc-val">${val}</span></div>`;
+  }).join('');
+}
+
+// ─── Historique ───────────────────────────────────────────────────────────────
+function renderHistorique() {
+  const el = document.getElementById('history-list');
+  const cnt = document.getElementById('hist-count');
+  if (!historique.length) {
+    el.innerHTML = '<div class="hist-empty">Aucune opération</div>';
+    cnt.textContent = '';
+    return;
+  }
+  cnt.textContent = `(${historique.length})`;
+
+  // État initial en haut
+  let html = `<div class="hist-item${histIdx===-1?' active':''}" onclick="allerEtatInitial()">
+    <div class="hist-title">État initial</div>
+    <div class="hist-sub">Poids de départ</div>
+    <span class="hist-arrow">◀</span>
+  </div>`;
+
+  historique.forEach((op, idx) => {
+    const active = histIdx === idx;
+    html += `<div class="hist-item${active?' active':''}" onclick="allerAEtat(${idx})">
+      <div class="hist-title">Équilibrage #${idx+1}</div>
+      <div class="hist-sub">Sommets : [${op.sommets.join(', ')}]<br>Moy. → ${op.moyenne}</div>
+      <span class="hist-arrow">◀</span>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+  // scroll to active
+  const active = el.querySelector('.active');
+  if (active) active.scrollIntoView({block:'nearest'});
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => generer('graphe'));
+window.addEventListener('resize', () => { if (N) { positions = circlePos(N); render(); } });
+</script>
+</body>
+</html>
