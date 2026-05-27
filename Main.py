@@ -16,5 +16,5 @@ for M in Ma :
     for i in Heuristique[1] :
         if len(i)>1:
             opsHeuri+=1
-    print("Heuristique : "+str(Algo.heuristique(L,P)[1][0])+", Algo arbre : "+str(Algo.heuristique_arbres(L,P,[])[0][0])+", Algo arbre 2 : "+str(Algo.heuristique_arbres2(L,P)[0])+", GLA : "+str(Algo.GLA(L,P)[1][0]))
+    print("Heuristique : "+str(Algo.heuristique(L,P)[1][0])+", Algo arbre : "+str(Algo.heuristique_arbres(L,P,[])[0][0])+", GLA : "+str(Algo.GLA(L,P)[1][0]))
     print(Vilkas[0],Heuristique[1])
