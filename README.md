@@ -1,1 +1,97 @@
-# Sharing-tea-on-a-graph
+# Sharing Tea on a Graph
+
+Implémentation numérique du problème *"Sharing tea on a graph"*
+([arXiv 2405.15353](https://arxiv.org/abs/2405.15353)).
+
+> **Contexte.** On place une unité de thé en un sommet source d'un graphe.
+> À chaque étape, on choisit un sous-ensemble **connexe** de sommets et on
+> **égalise** la quantité de thé entre eux. L'objectif est d'étudier la
+> quantité maximale de thé atteignable par un sommet à distance *d* de la source.
+
+---
+
+## Fichiers
+
+### `Graphe.py` — Structures de graphes et générateurs
+
+Fonctions de base pour représenter et générer des graphes.
+
+| Fonction | Description |
+|---|---|
+| `graphe_aleatoire(N)` | Génère un graphe aléatoire à *N* sommets (chaque arête présente avec proba ½). Retourne la matrice d'adjacence et la liste d'adjacence. |
+| `arbre_aleatoire(N)` | Génère un **arbre** aléatoire connexe à *N* sommets (chaque sommet *i* > 0 est relié à un parent tiré uniformément dans {0, …, i−1}). |
+| `fusion_graphe_poids(matrice, poids)` | Encode les poids des sommets sur la diagonale de la matrice d'adjacence. |
+| `matrice_liste(matrice)` | Convertit une matrice d'adjacence avec poids (diagonale) en liste d'adjacence + liste de poids. |
+| `liste_matrice(liste, poids)` | Opération inverse : liste d'adjacence + poids → matrice. |
+| `the_aleatoire(N)` | Génère *N* poids tirés uniformément dans [0, 1]. |
+| `the_binaire(N)` | Génère *N* poids binaires (0 ou 1) avec proba ½. |
+| `the_unique(N)` | Génère un vecteur de poids nul sauf en un sommet aléatoire (valeur 1). Modélise le problème de départ : une unité de thé en un seul sommet. |
+| `enregistrer_matrice(nom, matrice)` | Sauvegarde une matrice dans un fichier `.txt` (format lignes espace-séparées, matrices séparées par une ligne vide). |
+| `lire_matrices(nom)` | Lit et retourne la liste des matrices stockées dans un fichier `.txt`. |
+
+---
+
+### `OperationGraphe.py` — Opérations sur les graphes
+
+Implémente l'opération centrale du problème.
+
+| Fonction | Description |
+|---|---|
+| `est_connexe(graphe, sommets)` | Vérifie par DFS si le sous-graphe induit par `sommets` est **connexe**. Condition nécessaire pour pouvoir appliquer l'équilibrage. |
+| `equilibrage(graphe, poids, sommets)` | **Opération principale.** Si le sous-ensemble `sommets` est connexe, remplace les poids de ces sommets par leur moyenne (partage du thé). Retourne le nouveau vecteur de poids. |
+
+---
+
+### `chemin_tikz.py` — Dessin TikZ d'un chemin
+
+Génère le code LaTeX/TikZ d'un **graphe chemin** P_n.
+
+- Les deux **sommets extrémités** sont colorés en orange.
+- Les sommets intérieurs sont en bleu.
+- Paramétrable en ligne de commande : `python chemin_tikz.py 8` génère P_8.
+- Sauvegarde automatiquement un fichier `chemin_Pn.tex`.
+
+---
+
+### `chemin_zones.py` — Chemin avec zones A, B, C
+
+Génère le code LaTeX/TikZ d'un chemin P_10 annoté avec trois zones connexes et disjointes.
+
+- **Sommet 0** : double cercle orange, annoté "sommet étudié" — c'est la source du thé.
+- **Zone A** (sommets 0–2) : fond orange, englobe le sommet étudié.
+- **Zone B** (sommets 4–6) : fond bleu, disjointe de A.
+- **Zone C** (sommets 8–9) : fond vert, disjointe de A et B.
+- Les sommets 3 et 7 sont hors zone — A ∪ B ∪ C ne couvre pas le chemin entier.
+
+Illustre le type de partition utilisée dans les preuves du problème du thé.
+
+---
+
+## Installation
+
+Aucune dépendance externe requise pour `Graphe.py` et `OperationGraphe.py` (bibliothèque standard Python uniquement).
+
+Pour compiler les fichiers `.tex` générés :
+
+```bash
+pdflatex chemin_Pn.tex
+pdflatex chemin_zones.tex
+```
+
+## Exemple d'utilisation
+
+```python
+from Graphe import arbre_aleatoire, the_unique
+from OperationGraphe import equilibrage
+
+# Créer un arbre à 10 sommets avec 1 unité de thé au sommet 0
+_, liste = arbre_aleatoire(10)
+poids = the_unique(10)   # [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+# Partager le thé entre les sommets 0, 1, 2 (sous-ensemble connexe)
+nouveaux_poids = equilibrage(liste, poids, [0, 1, 2])
+```
+
+## Référence
+
+> J. P. Gollin *et al.*, **Sharing tea on a graph**, arXiv:2405.15353 (2024).
