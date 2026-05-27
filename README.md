@@ -42,42 +42,6 @@ Implémente l'opération centrale du problème.
 
 ---
 
-### `chemin_tikz.py` — Dessin TikZ d'un chemin
-
-Génère le code LaTeX/TikZ d'un **graphe chemin** P_n.
-
-- Les deux **sommets extrémités** sont colorés en orange.
-- Les sommets intérieurs sont en bleu.
-- Paramétrable en ligne de commande : `python chemin_tikz.py 8` génère P_8.
-- Sauvegarde automatiquement un fichier `chemin_Pn.tex`.
-
----
-
-### `chemin_zones.py` — Chemin avec zones A, B, C
-
-Génère le code LaTeX/TikZ d'un chemin P_10 annoté avec trois zones connexes et disjointes.
-
-- **Sommet 0** : double cercle orange, annoté "sommet étudié" — c'est la source du thé.
-- **Zone A** (sommets 0–2) : fond orange, englobe le sommet étudié.
-- **Zone B** (sommets 4–6) : fond bleu, disjointe de A.
-- **Zone C** (sommets 8–9) : fond vert, disjointe de A et B.
-- Les sommets 3 et 7 sont hors zone — A ∪ B ∪ C ne couvre pas le chemin entier.
-
-Illustre le type de partition utilisée dans les preuves du problème du thé.
-
----
-
-## Installation
-
-Aucune dépendance externe requise pour `Graphe.py` et `OperationGraphe.py` (bibliothèque standard Python uniquement).
-
-Pour compiler les fichiers `.tex` générés :
-
-```bash
-pdflatex chemin_Pn.tex
-pdflatex chemin_zones.tex
-```
-
 ## Exemple d'utilisation
 
 ```python
