@@ -49,7 +49,7 @@ la quantité de thé obtenue en un sommet donné.
 
 | Fonction | Description |
 |---|---|
-| `GLA(liste, poids)` | (*Greedy Local Averaging*) Explore tous les sous-ensembles connexes contenant le sommet 0 et choisit celui maximisant immédiatement la quantité de thé au sommet source après équilibrage. |
+| `GLA(liste, poids)` | (*Greedy Lettuce Animal*) Explore tous les sous-ensembles connexes contenant le sommet 0 et choisit celui maximisant immédiatement la quantité de thé au sommet source après équilibrage. |
 | `goulot(v, sommets, liste, poids)` | Cherche un sous-ensemble connexe optimal permettant d’augmenter la quantité de thé au sommet `v`, tout en tenant compte d’un ensemble de sommets déjà sélectionnés. |
 | `heuristique(liste, poids)` | Heuristique générale construisant une suite d’opérations d’équilibrage à partir des « goulots » identifiés par `GLA`. Retourne la liste des opérations appliquées ainsi que les poids finaux. |
 | `chemins_depuis_racine(graphe)` | Dans un arbre enraciné en 0, calcule pour chaque sommet le chemin reliant ce sommet à la racine via un parcours DFS. |
